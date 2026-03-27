@@ -1,0 +1,703 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>EMS — Employee Management System</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
+  * { font-family: 'Inter', sans-serif; }
+  .sidebar { transition: transform 0.25s ease; }
+  .page { display: none; }
+  .page.active { display: block; }
+  .nav-item.active { background: #2563eb; color: #fff; }
+  .nav-item:hover:not(.active) { background: #1f2937; }
+  ::-webkit-scrollbar { width: 5px; }
+  ::-webkit-scrollbar-thumb { background: #374151; border-radius: 3px; }
+  .card { background:#fff; border-radius:12px; border:1px solid #e5e7eb; box-shadow:0 1px 3px rgba(0,0,0,.06); }
+  .badge { display:inline-flex; align-items:center; padding:2px 8px; border-radius:999px; font-size:11px; font-weight:500; }
+  .btn { display:inline-flex; align-items:center; gap:6px; padding:8px 16px; border-radius:8px; font-size:13px; font-weight:500; cursor:pointer; border:none; transition:all .15s; }
+  .btn-primary { background:#2563eb; color:#fff; } .btn-primary:hover { background:#1d4ed8; }
+  .btn-outline { background:#fff; color:#374151; border:1px solid #d1d5db; } .btn-outline:hover { background:#f9fafb; }
+  @keyframes fadeIn { from{opacity:0;transform:translateY(8px)} to{opacity:1;transform:translateY(0)} }
+  .fade-in { animation: fadeIn .3s ease; }
+  .progress-bar { height:6px; border-radius:3px; background:#e5e7eb; overflow:hidden; }
+  .progress-fill { height:100%; border-radius:3px; transition:width .6s ease; }
+  .kanban-col { min-height:300px; }
+  .task-card { background:#fff; border-radius:10px; padding:12px; border:1px solid #e5e7eb; margin-bottom:8px; cursor:pointer; border-left:4px solid; transition:box-shadow .15s; }
+  .task-card:hover { box-shadow:0 4px 12px rgba(0,0,0,.08); }
+  .pulse { animation: pulse 2s infinite; }
+  @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.4} }
+</style>
+</head>
+<body class="bg-gray-50 text-gray-900">
+
+<!-- LOGIN PAGE -->
+<div id="page-login" class="page active min-h-screen flex items-center justify-center" style="background:linear-gradient(135deg,#0f172a,#1e3a8a,#0f172a)">
+  <div class="w-full max-w-md px-4">
+    <div class="text-center mb-8">
+      <div class="w-16 h-16 bg-blue-600 rounded-2xl flex items-center justify-center text-3xl mx-auto mb-4 shadow-xl">🏢</div>
+      <h1 class="text-2xl font-bold text-white">Employee Management System</h1>
+      <p class="text-gray-400 text-sm mt-1">Sign in to your account</p>
+    </div>
+    <div class="card p-8">
+      <div class="space-y-4">
+        <div>
+          <label class="block text-sm font-medium text-gray-700 mb-1">Email Address</label>
+          <input id="login-email" type="email" class="w-full px-3 py-2.5 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="you@company.com" value="ceo@company.com"/>
+        </div>
+        <div>
+          <label class="block text-sm font-medium text-gray-700 mb-1">Password</label>
+          <input type="password" class="w-full px-3 py-2.5 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="••••••••" value="password123"/>
+        </div>
+        <button onclick="doLogin()" class="btn btn-primary w-full justify-center py-2.5 text-sm font-medium">Sign In →</button>
+      </div>
+      <div class="mt-6 pt-5 border-t border-gray-100">
+        <p class="text-xs text-gray-400 text-center mb-3 font-medium tracking-wide">DEMO ACCOUNTS</p>
+        <div class="grid grid-cols-3 gap-2">
+          <button onclick="quickLogin('ceo')" class="border border-purple-200 bg-purple-50 text-purple-700 rounded-lg py-2 text-xs font-medium hover:bg-purple-100 transition-colors">👑 CEO</button>
+          <button onclick="quickLogin('manager')" class="border border-blue-200 bg-blue-50 text-blue-700 rounded-lg py-2 text-xs font-medium hover:bg-blue-100 transition-colors">👔 Manager</button>
+          <button onclick="quickLogin('employee')" class="border border-green-200 bg-green-50 text-green-700 rounded-lg py-2 text-xs font-medium hover:bg-green-100 transition-colors">👤 Employee</button>
+        </div>
+        <p class="text-xs text-gray-400 text-center mt-2">Password: <code class="bg-gray-100 px-1 rounded">password123</code></p>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- MAIN APP -->
+<div id="page-app" class="page" style="height:100vh;display:none;flex-direction:row;">
+
+  <!-- SIDEBAR -->
+  <aside id="sidebar" class="sidebar w-60 flex-shrink-0 bg-gray-900 text-white flex flex-col h-screen sticky top-0 overflow-hidden">
+    <div class="flex items-center gap-3 px-5 py-4 border-b border-gray-700">
+      <div class="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center text-base">🏢</div>
+      <div><div class="font-bold text-sm">EMS</div><div class="text-gray-400 text-xs">Management System</div></div>
+    </div>
+    <div class="px-4 py-3 border-b border-gray-700">
+      <div class="flex items-center gap-3">
+        <div id="sb-avatar" class="w-8 h-8 rounded-full bg-blue-600 flex items-center justify-center text-xs font-bold">AR</div>
+        <div><div id="sb-name" class="font-medium text-sm">Ahmed Al-Rashid</div><div id="sb-role" class="text-gray-400 text-xs">CEO / Admin</div></div>
+      </div>
+    </div>
+    <nav class="flex-1 px-3 py-3 space-y-0.5 overflow-y-auto">
+      <a onclick="showView('dashboard')" class="nav-item active flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium cursor-pointer transition-all text-white">📊 Dashboard</a>
+      <a onclick="showView('attendance')" class="nav-item flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium cursor-pointer transition-all text-gray-300">⏱️ Attendance</a>
+      <a onclick="showView('tasks')" class="nav-item flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium cursor-pointer transition-all text-gray-300">📋 Tasks</a>
+      <a onclick="showView('calendar')" class="nav-item flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium cursor-pointer transition-all text-gray-300">📅 Calendar</a>
+      <a id="nav-employees" onclick="showView('employees')" class="nav-item flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium cursor-pointer transition-all text-gray-300">👥 Employees</a>
+      <a id="nav-departments" onclick="showView('departments')" class="nav-item flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium cursor-pointer transition-all text-gray-300">🏢 Departments</a>
+      <a id="nav-reports" onclick="showView('reports')" class="nav-item flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium cursor-pointer transition-all text-gray-300">📈 Reports</a>
+    </nav>
+    <div class="px-3 pb-4 border-t border-gray-700 pt-3 space-y-0.5">
+      <a onclick="showView('profile')" class="nav-item flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium cursor-pointer transition-all text-gray-300">👤 Profile</a>
+      <a onclick="doLogout()" class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium cursor-pointer transition-all text-gray-300 hover:bg-red-900/40 hover:text-red-400">🚪 Logout</a>
+    </div>
+  </aside>
+
+  <!-- MAIN -->
+  <div class="flex-1 flex flex-col min-w-0 overflow-hidden">
+    <!-- HEADER -->
+    <header class="bg-white border-b border-gray-200 px-6 py-3 flex items-center gap-4 sticky top-0 z-10">
+      <div id="header-date" class="text-sm text-gray-500"></div>
+      <div class="ml-auto flex items-center gap-3">
+        <div class="flex items-center gap-1.5 text-xs text-green-600 bg-green-50 px-2.5 py-1 rounded-full">
+          <span class="w-1.5 h-1.5 rounded-full bg-green-500 pulse"></span> Live
+        </div>
+        <div class="relative">
+          <button onclick="toggleNotif()" class="relative p-2 rounded-lg hover:bg-gray-100 text-gray-500">
+            🔔
+            <span class="absolute -top-0.5 -right-0.5 w-4 h-4 bg-red-500 text-white text-xs rounded-full flex items-center justify-center font-bold">3</span>
+          </button>
+          <div id="notif-panel" class="hidden absolute right-0 top-full mt-2 w-72 card z-50 shadow-xl">
+            <div class="flex items-center justify-between px-4 py-3 border-b border-gray-100">
+              <span class="font-semibold text-sm">Notifications</span>
+              <button onclick="document.getElementById('notif-panel').classList.add('hidden')" class="text-xs text-blue-600">Mark all read</button>
+            </div>
+            <div class="divide-y divide-gray-50">
+              <div class="px-4 py-3 bg-blue-50/50"><div class="font-medium text-xs">New Task Assigned</div><div class="text-xs text-gray-500">Design new landing page mockups — Due Mar 31</div><div class="text-xs text-gray-400 mt-1">2 min ago</div></div>
+              <div class="px-4 py-3 bg-blue-50/50"><div class="font-medium text-xs">Task Overdue 🚨</div><div class="text-xs text-gray-500">Prepare monthly financial report is overdue</div><div class="text-xs text-gray-400 mt-1">1 hr ago</div></div>
+              <div class="px-4 py-3"><div class="font-medium text-xs">Attendance Alert</div><div class="text-xs text-gray-500">5 employees haven't punched out</div><div class="text-xs text-gray-400 mt-1">3 hrs ago</div></div>
+            </div>
+          </div>
+        </div>
+        <div onclick="showView('profile')" class="w-8 h-8 rounded-full bg-blue-600 text-white flex items-center justify-center text-xs font-bold cursor-pointer hover:bg-blue-700" id="header-avatar">AR</div>
+      </div>
+    </header>
+
+    <!-- VIEWS -->
+    <main class="flex-1 overflow-y-auto">
+      <div class="p-6 max-w-screen-2xl mx-auto">
+
+        <!-- DASHBOARD VIEW -->
+        <div id="view-dashboard" class="view fade-in">
+          <div class="flex items-center justify-between mb-6">
+            <div>
+              <h1 class="text-2xl font-bold" id="dash-title">CEO Dashboard</h1>
+              <p class="text-gray-500 text-sm mt-0.5" id="dash-sub">Full visibility across all teams</p>
+            </div>
+            <button class="btn btn-outline text-sm">🔄 Refresh</button>
+          </div>
+
+          <!-- KPI Row 1 -->
+          <div class="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-4">
+            <div class="card p-5"><p class="text-sm text-gray-500 font-medium">Present Today</p><p class="text-3xl font-bold text-green-600 mt-1">118</p><p class="text-xs text-gray-400 mt-1">of 147 total · 80% rate</p></div>
+            <div class="card p-5"><p class="text-sm text-gray-500 font-medium">Late Arrivals</p><p class="text-3xl font-bold text-yellow-500 mt-1">12</p><p class="text-xs text-gray-400 mt-1">Today</p></div>
+            <div class="card p-5"><p class="text-sm text-gray-500 font-medium">Absent Today</p><p class="text-3xl font-bold text-red-500 mt-1">17</p><p class="text-xs text-gray-400 mt-1">23 still clocked in</p></div>
+            <div class="card p-5"><p class="text-sm text-gray-500 font-medium">Total Workforce</p><p class="text-3xl font-bold text-blue-600 mt-1">150</p><p class="text-xs text-gray-400 mt-1">143 employees · 7 managers</p></div>
+          </div>
+
+          <!-- KPI Row 2 -->
+          <div class="grid grid-cols-2 lg:grid-cols-5 gap-4 mb-6">
+            <div class="card p-4 text-center"><div class="text-2xl font-bold text-gray-900">84</div><div class="text-xs text-gray-400 mt-0.5">Total Tasks</div></div>
+            <div class="card p-4 text-center"><div class="text-2xl font-bold text-gray-500">18</div><div class="text-xs text-gray-400 mt-0.5">Pending</div></div>
+            <div class="card p-4 text-center"><div class="text-2xl font-bold text-yellow-500">29</div><div class="text-xs text-gray-400 mt-0.5">In Progress</div></div>
+            <div class="card p-4 text-center"><div class="text-2xl font-bold text-green-600">31</div><div class="text-xs text-gray-400 mt-0.5">Completed</div></div>
+            <div class="card p-4 text-center"><div class="text-2xl font-bold text-red-500">6</div><div class="text-xs text-gray-400 mt-0.5">Overdue 🚨</div></div>
+          </div>
+
+          <!-- Charts Row -->
+          <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
+            <div class="card p-5 lg:col-span-2">
+              <h3 class="font-semibold text-gray-900 mb-4">Attendance Trend (Last 14 Days)</h3>
+              <canvas id="attendanceChart" height="90"></canvas>
+            </div>
+            <div class="card p-5">
+              <h3 class="font-semibold text-gray-900 mb-4">Today's Attendance</h3>
+              <canvas id="pieChart" height="140"></canvas>
+              <div class="space-y-2 mt-3">
+                <div class="flex justify-between text-sm"><span class="flex items-center gap-2"><span class="w-2.5 h-2.5 rounded-full bg-green-500 inline-block"></span>Present</span><span class="font-semibold">118</span></div>
+                <div class="flex justify-between text-sm"><span class="flex items-center gap-2"><span class="w-2.5 h-2.5 rounded-full bg-yellow-400 inline-block"></span>Late</span><span class="font-semibold">12</span></div>
+                <div class="flex justify-between text-sm"><span class="flex items-center gap-2"><span class="w-2.5 h-2.5 rounded-full bg-red-500 inline-block"></span>Absent</span><span class="font-semibold">17</span></div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Dept Performance + People Insights -->
+          <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+            <div class="card p-5">
+              <h3 class="font-semibold text-gray-900 mb-4">Department Performance</h3>
+              <div class="space-y-3">
+                <div class="border border-gray-100 rounded-lg p-3">
+                  <div class="flex justify-between mb-2"><span class="font-medium text-sm">Technical Design Team <span class="text-xs bg-teal-100 text-teal-600 px-1.5 py-0.5 rounded ml-1">inhouse</span></span><span class="text-xs text-gray-400">8 emp</span></div>
+                  <div class="grid grid-cols-2 gap-2">
+                    <div><div class="flex justify-between text-xs text-gray-400 mb-1"><span>Attendance</span><span>88%</span></div><div class="progress-bar"><div class="progress-fill bg-green-500" style="width:88%"></div></div></div>
+                    <div><div class="flex justify-between text-xs text-gray-400 mb-1"><span>Tasks</span><span>74%</span></div><div class="progress-bar"><div class="progress-fill bg-blue-500" style="width:74%"></div></div></div>
+                  </div>
+                </div>
+                <div class="border border-gray-100 rounded-lg p-3">
+                  <div class="flex justify-between mb-2"><span class="font-medium text-sm">Events Team <span class="text-xs bg-teal-100 text-teal-600 px-1.5 py-0.5 rounded ml-1">inhouse</span></span><span class="text-xs text-gray-400">6 emp</span></div>
+                  <div class="grid grid-cols-2 gap-2">
+                    <div><div class="flex justify-between text-xs text-gray-400 mb-1"><span>Attendance</span><span>92%</span></div><div class="progress-bar"><div class="progress-fill bg-green-500" style="width:92%"></div></div></div>
+                    <div><div class="flex justify-between text-xs text-gray-400 mb-1"><span>Tasks</span><span>81%</span></div><div class="progress-bar"><div class="progress-fill bg-blue-500" style="width:81%"></div></div></div>
+                  </div>
+                </div>
+                <div class="border border-gray-100 rounded-lg p-3">
+                  <div class="flex justify-between mb-2"><span class="font-medium text-sm">Technical (Site) <span class="text-xs bg-orange-100 text-orange-600 px-1.5 py-0.5 rounded ml-1">onsite</span></span><span class="text-xs text-red-500 text-xs font-medium">2 overdue</span></div>
+                  <div class="grid grid-cols-2 gap-2">
+                    <div><div class="flex justify-between text-xs text-gray-400 mb-1"><span>Attendance</span><span>76%</span></div><div class="progress-bar"><div class="progress-fill bg-yellow-500" style="width:76%"></div></div></div>
+                    <div><div class="flex justify-between text-xs text-gray-400 mb-1"><span>Tasks</span><span>58%</span></div><div class="progress-bar"><div class="progress-fill bg-yellow-500" style="width:58%"></div></div></div>
+                  </div>
+                </div>
+                <div class="border border-gray-100 rounded-lg p-3">
+                  <div class="flex justify-between mb-2"><span class="font-medium text-sm">Business Development <span class="text-xs bg-teal-100 text-teal-600 px-1.5 py-0.5 rounded ml-1">inhouse</span></span><span class="text-xs text-gray-400">5 emp</span></div>
+                  <div class="grid grid-cols-2 gap-2">
+                    <div><div class="flex justify-between text-xs text-gray-400 mb-1"><span>Attendance</span><span>84%</span></div><div class="progress-bar"><div class="progress-fill bg-green-500" style="width:84%"></div></div></div>
+                    <div><div class="flex justify-between text-xs text-gray-400 mb-1"><span>Tasks</span><span>69%</span></div><div class="progress-bar"><div class="progress-fill bg-blue-500" style="width:69%"></div></div></div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div class="space-y-4">
+              <div class="card p-5">
+                <h3 class="font-semibold text-gray-900 mb-3">🏆 Top Performers</h3>
+                <div class="space-y-2.5">
+                  <div class="flex items-center gap-3"><span class="text-base font-bold text-gray-200 w-5">1</span><div class="w-7 h-7 rounded-full bg-blue-500 flex items-center justify-center text-xs font-bold text-white">FK</div><div class="flex-1 min-w-0"><div class="text-sm font-medium truncate">Fatima Al-Zahra</div><div class="text-xs text-gray-400">Events Team</div></div><div class="text-right"><div class="text-sm font-bold text-green-600">9/10</div><div class="text-xs text-gray-400">tasks</div></div></div>
+                  <div class="flex items-center gap-3"><span class="text-base font-bold text-gray-200 w-5">2</span><div class="w-7 h-7 rounded-full bg-purple-500 flex items-center justify-center text-xs font-bold text-white">OK</div><div class="flex-1 min-w-0"><div class="text-sm font-medium truncate">Omar Khalil</div><div class="text-xs text-gray-400">Technical Design</div></div><div class="text-right"><div class="text-sm font-bold text-green-600">8/9</div><div class="text-xs text-gray-400">tasks</div></div></div>
+                  <div class="flex items-center gap-3"><span class="text-base font-bold text-gray-200 w-5">3</span><div class="w-7 h-7 rounded-full bg-teal-500 flex items-center justify-center text-xs font-bold text-white">NF</div><div class="flex-1 min-w-0"><div class="text-sm font-medium truncate">Nadia Farooq</div><div class="text-xs text-gray-400">Business Dev</div></div><div class="text-right"><div class="text-sm font-bold text-green-600">7/8</div><div class="text-xs text-gray-400">tasks</div></div></div>
+                </div>
+              </div>
+              <div class="card p-5">
+                <h3 class="font-semibold text-gray-900 mb-3">🔥 Overloaded</h3>
+                <div class="space-y-2.5">
+                  <div class="flex items-center gap-3"><div class="w-7 h-7 rounded-full bg-orange-500 flex items-center justify-center text-xs font-bold text-white">BC</div><div class="flex-1 min-w-0"><div class="text-sm font-medium">Bilal Chaudhry</div><div class="text-xs text-gray-400">Technical (Site)</div></div><span class="text-sm font-bold text-red-600">7 tasks</span></div>
+                  <div class="flex items-center gap-3"><div class="w-7 h-7 rounded-full bg-pink-500 flex items-center justify-center text-xs font-bold text-white">DY</div><div class="flex-1 min-w-0"><div class="text-sm font-medium">Dina Youssef</div><div class="text-xs text-gray-400">Events Team</div></div><span class="text-sm font-bold text-red-600">6 tasks</span></div>
+                </div>
+              </div>
+              <div class="card p-5">
+                <h3 class="font-semibold text-gray-900 mb-3">⚠️ Needs Attention</h3>
+                <div class="space-y-2.5">
+                  <div class="flex items-center gap-3"><div class="w-7 h-7 rounded-full bg-gray-400 flex items-center justify-center text-xs font-bold text-white">IS</div><div class="flex-1 min-w-0"><div class="text-sm font-medium">Imran Shaikh</div><div class="text-xs text-gray-400">Operational (Site)</div></div><div class="text-right"><div class="text-xs text-red-600 font-medium">4 absences</div><div class="text-xs text-orange-500">2 overdue</div></div></div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Recent Tasks -->
+          <div class="card p-5">
+            <h3 class="font-semibold text-gray-900 mb-4">Recent Task Activity</h3>
+            <div class="overflow-x-auto">
+              <table class="w-full text-sm">
+                <thead><tr class="border-b border-gray-100"><th class="text-left py-2 px-3 text-xs font-medium text-gray-400 uppercase">Task</th><th class="text-left py-2 px-3 text-xs font-medium text-gray-400 uppercase">Assigned To</th><th class="text-left py-2 px-3 text-xs font-medium text-gray-400 uppercase">Dept</th><th class="text-left py-2 px-3 text-xs font-medium text-gray-400 uppercase">Status</th><th class="text-left py-2 px-3 text-xs font-medium text-gray-400 uppercase">Deadline</th></tr></thead>
+                <tbody class="divide-y divide-gray-50">
+                  <tr class="hover:bg-gray-50/50"><td class="py-2.5 px-3 font-medium">Design new landing page mockups</td><td class="py-2.5 px-3 text-gray-600">Hassan Iqbal</td><td class="py-2.5 px-3 text-xs text-gray-400">Technical Design</td><td class="py-2.5 px-3"><span class="badge bg-yellow-100 text-yellow-700">In Progress</span></td><td class="py-2.5 px-3 text-gray-600">Mar 31, 2025</td></tr>
+                  <tr class="hover:bg-gray-50/50 bg-red-50/30"><td class="py-2.5 px-3 font-medium"><span class="text-red-500">🚨</span> Prepare financial report</td><td class="py-2.5 px-3 text-gray-600">Rana Farhat</td><td class="py-2.5 px-3 text-xs text-gray-400">Finance & Admin</td><td class="py-2.5 px-3"><span class="badge bg-gray-100 text-gray-700">Assigned</span></td><td class="py-2.5 px-3 text-red-600 font-medium">Mar 20, 2025</td></tr>
+                  <tr class="hover:bg-gray-50/50"><td class="py-2.5 px-3 font-medium">Coordinate event logistics Q2</td><td class="py-2.5 px-3 text-gray-600">Samir Haddad</td><td class="py-2.5 px-3 text-xs text-gray-400">Events Team</td><td class="py-2.5 px-3"><span class="badge bg-green-100 text-green-700">Completed</span></td><td class="py-2.5 px-3 text-gray-600">Mar 28, 2025</td></tr>
+                  <tr class="hover:bg-gray-50/50"><td class="py-2.5 px-3 font-medium">Develop client proposal</td><td class="py-2.5 px-3 text-gray-600">Lena Mahmoud</td><td class="py-2.5 px-3 text-xs text-gray-400">Business Dev</td><td class="py-2.5 px-3"><span class="badge bg-blue-100 text-blue-700">Accepted</span></td><td class="py-2.5 px-3 text-gray-600">Apr 5, 2025</td></tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+
+        <!-- ATTENDANCE VIEW -->
+        <div id="view-attendance" class="view fade-in" style="display:none">
+          <div class="flex items-center justify-between mb-6">
+            <div><h1 class="text-2xl font-bold">Attendance</h1><p class="text-gray-500 text-sm">Thursday, March 27, 2025</p></div>
+            <button onclick="showOverrideModal()" class="btn btn-outline text-sm">✏️ Override Attendance</button>
+          </div>
+          <div class="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+            <div class="card p-5"><p class="text-sm text-gray-500 font-medium">Present</p><p class="text-3xl font-bold text-green-600 mt-1">118</p></div>
+            <div class="card p-5"><p class="text-sm text-gray-500 font-medium">Late</p><p class="text-3xl font-bold text-yellow-500 mt-1">12</p></div>
+            <div class="card p-5"><p class="text-sm text-gray-500 font-medium">Absent</p><p class="text-3xl font-bold text-red-500 mt-1">17</p></div>
+            <div class="card p-5"><p class="text-sm text-gray-500 font-medium">Half Day</p><p class="text-3xl font-bold text-orange-500 mt-1">3</p></div>
+          </div>
+          <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mb-6">
+            <div class="card p-5">
+              <div class="flex justify-between mb-3"><div><h4 class="font-semibold">Technical Design Team</h4><span class="badge bg-teal-100 text-teal-700 mt-1">inhouse</span></div><span class="text-2xl font-bold text-green-600">88%</span></div>
+              <div class="progress-bar mb-3"><div class="progress-fill bg-green-500" style="width:88%"></div></div>
+              <div class="grid grid-cols-4 gap-1 text-center text-xs"><div><div class="font-bold text-gray-900">8</div><div class="text-gray-400">Total</div></div><div><div class="font-bold text-green-600">7</div><div class="text-gray-400">Present</div></div><div><div class="font-bold text-yellow-500">1</div><div class="text-gray-400">Late</div></div><div><div class="font-bold text-red-500">0</div><div class="text-gray-400">Absent</div></div></div>
+            </div>
+            <div class="card p-5">
+              <div class="flex justify-between mb-3"><div><h4 class="font-semibold">Events Team</h4><span class="badge bg-teal-100 text-teal-700 mt-1">inhouse</span></div><span class="text-2xl font-bold text-green-600">92%</span></div>
+              <div class="progress-bar mb-3"><div class="progress-fill bg-green-500" style="width:92%"></div></div>
+              <div class="grid grid-cols-4 gap-1 text-center text-xs"><div><div class="font-bold text-gray-900">6</div><div class="text-gray-400">Total</div></div><div><div class="font-bold text-green-600">5</div><div class="text-gray-400">Present</div></div><div><div class="font-bold text-yellow-500">1</div><div class="text-gray-400">Late</div></div><div><div class="font-bold text-red-500">0</div><div class="text-gray-400">Absent</div></div></div>
+            </div>
+            <div class="card p-5">
+              <div class="flex justify-between mb-3"><div><h4 class="font-semibold">Technical (Site)</h4><span class="badge bg-orange-100 text-orange-700 mt-1">onsite</span></div><span class="text-2xl font-bold text-yellow-500">76%</span></div>
+              <div class="progress-bar mb-3"><div class="progress-fill bg-yellow-500" style="width:76%"></div></div>
+              <div class="grid grid-cols-4 gap-1 text-center text-xs"><div><div class="font-bold text-gray-900">9</div><div class="text-gray-400">Total</div></div><div><div class="font-bold text-green-600">6</div><div class="text-gray-400">Present</div></div><div><div class="font-bold text-yellow-500">1</div><div class="text-gray-400">Late</div></div><div><div class="font-bold text-red-500">2</div><div class="text-gray-400">Absent</div></div></div>
+            </div>
+          </div>
+          <div class="card overflow-hidden">
+            <div class="px-5 py-4 border-b border-gray-100 flex items-center justify-between">
+              <h3 class="font-semibold">Today's Attendance Log</h3>
+              <div class="flex gap-2"><select class="text-xs border border-gray-200 rounded px-2 py-1"><option>All Status</option><option>Present</option><option>Late</option><option>Absent</option></select></div>
+            </div>
+            <div class="overflow-x-auto">
+              <table class="w-full text-sm">
+                <thead class="bg-gray-50 border-b border-gray-200"><tr><th class="text-left py-3 px-4 font-medium text-gray-400 text-xs uppercase">Employee</th><th class="text-left py-3 px-4 font-medium text-gray-400 text-xs uppercase">Department</th><th class="text-left py-3 px-4 font-medium text-gray-400 text-xs uppercase">Punch In</th><th class="text-left py-3 px-4 font-medium text-gray-400 text-xs uppercase">Punch Out</th><th class="text-left py-3 px-4 font-medium text-gray-400 text-xs uppercase">Hours</th><th class="text-left py-3 px-4 font-medium text-gray-400 text-xs uppercase">Status</th></tr></thead>
+                <tbody class="divide-y divide-gray-50">
+                  <tr class="hover:bg-gray-50/50"><td class="py-3 px-4"><div class="flex items-center gap-2"><div class="w-7 h-7 rounded-full bg-blue-500 flex items-center justify-center text-xs font-bold text-white">HI</div><div><div class="font-medium">Hassan Iqbal</div><div class="text-xs text-gray-400">UI/UX Designer</div></div></div></td><td class="py-3 px-4 text-xs text-gray-500">Technical Design</td><td class="py-3 px-4 text-gray-700">08:52</td><td class="py-3 px-4 text-gray-700">18:10</td><td class="py-3 px-4 text-gray-600">9h 18m</td><td class="py-3 px-4"><span class="badge bg-green-100 text-green-700">Present</span></td></tr>
+                  <tr class="hover:bg-gray-50/50"><td class="py-3 px-4"><div class="flex items-center gap-2"><div class="w-7 h-7 rounded-full bg-orange-500 flex items-center justify-center text-xs font-bold text-white">BC</div><div><div class="font-medium">Bilal Chaudhry</div><div class="text-xs text-gray-400">Site Engineer</div></div></div></td><td class="py-3 px-4 text-xs text-gray-500">Technical (Site)</td><td class="py-3 px-4 text-gray-700">09:34</td><td class="py-3 px-4 text-gray-700">17:45</td><td class="py-3 px-4 text-gray-600">8h 11m</td><td class="py-3 px-4"><span class="badge bg-yellow-100 text-yellow-700">Late</span></td></tr>
+                  <tr class="hover:bg-gray-50/50"><td class="py-3 px-4"><div class="flex items-center gap-2"><div class="w-7 h-7 rounded-full bg-pink-500 flex items-center justify-center text-xs font-bold text-white">DY</div><div><div class="font-medium">Dina Youssef</div><div class="text-xs text-gray-400">Event Coordinator</div></div></div></td><td class="py-3 px-4 text-xs text-gray-500">Events Team</td><td class="py-3 px-4 text-gray-700">08:45</td><td class="py-3 px-4 text-gray-400">—</td><td class="py-3 px-4 text-orange-500 text-xs font-medium">Still in</td><td class="py-3 px-4"><span class="badge bg-green-100 text-green-700">Present</span></td></tr>
+                  <tr class="hover:bg-gray-50/50"><td class="py-3 px-4"><div class="flex items-center gap-2"><div class="w-7 h-7 rounded-full bg-red-400 flex items-center justify-center text-xs font-bold text-white">IS</div><div><div class="font-medium">Imran Shaikh</div><div class="text-xs text-gray-400">Site Coordinator</div></div></div></td><td class="py-3 px-4 text-xs text-gray-500">Operational (Site)</td><td class="py-3 px-4 text-gray-400">—</td><td class="py-3 px-4 text-gray-400">—</td><td class="py-3 px-4 text-gray-400">—</td><td class="py-3 px-4"><span class="badge bg-red-100 text-red-700">Absent</span></td></tr>
+                  <tr class="hover:bg-gray-50/50"><td class="py-3 px-4"><div class="flex items-center gap-2"><div class="w-7 h-7 rounded-full bg-teal-500 flex items-center justify-center text-xs font-bold text-white">LN</div><div><div class="font-medium">Layla Nasser</div><div class="text-xs text-gray-400">HR Officer</div></div></div></td><td class="py-3 px-4 text-xs text-gray-500">HR Team</td><td class="py-3 px-4 text-gray-700">09:05</td><td class="py-3 px-4 text-gray-700">13:20</td><td class="py-3 px-4 text-gray-600">4h 15m</td><td class="py-3 px-4"><span class="badge bg-orange-100 text-orange-700">Half Day</span></td></tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+
+        <!-- TASKS VIEW -->
+        <div id="view-tasks" class="view fade-in" style="display:none">
+          <div class="flex items-center justify-between mb-5">
+            <div><h1 class="text-2xl font-bold">Tasks</h1><p class="text-gray-500 text-sm">84 total · 29 in progress · 6 overdue</p></div>
+            <div class="flex gap-2">
+              <div class="flex bg-gray-100 rounded-lg p-0.5 gap-0.5">
+                <button onclick="setTaskView('board')" id="btn-board" class="px-3 py-1.5 text-sm rounded-md font-medium bg-white shadow text-gray-900">⬜ Board</button>
+                <button onclick="setTaskView('list')" id="btn-list" class="px-3 py-1.5 text-sm rounded-md font-medium text-gray-500 hover:text-gray-700">☰ List</button>
+              </div>
+              <button onclick="showCreateTask()" class="btn btn-primary">+ New Task</button>
+            </div>
+          </div>
+          <div class="grid grid-cols-3 lg:grid-cols-6 gap-3 mb-5">
+            <div class="card p-3 text-center"><div class="text-2xl font-bold text-gray-900">84</div><div class="text-xs text-gray-400 mt-0.5">Total</div></div>
+            <div class="card p-3 text-center"><div class="text-2xl font-bold text-gray-500">18</div><div class="text-xs text-gray-400 mt-0.5">Pending</div></div>
+            <div class="card p-3 text-center"><div class="text-2xl font-bold text-yellow-500">29</div><div class="text-xs text-gray-400 mt-0.5">In Progress</div></div>
+            <div class="card p-3 text-center"><div class="text-2xl font-bold text-green-600">31</div><div class="text-xs text-gray-400 mt-0.5">Completed</div></div>
+            <div class="card p-3 text-center"><div class="text-2xl font-bold text-purple-600">6</div><div class="text-xs text-gray-400 mt-0.5">Reviewed</div></div>
+            <div class="card p-3 text-center"><div class="text-2xl font-bold text-red-600">6</div><div class="text-xs text-gray-400 mt-0.5">Overdue</div></div>
+          </div>
+          <!-- Kanban Board -->
+          <div id="task-board" class="flex gap-4 overflow-x-auto pb-4">
+            <div class="flex-shrink-0 w-64">
+              <div class="bg-gray-100 rounded-t-lg px-3 py-2.5 flex items-center justify-between"><div class="flex items-center gap-2"><span class="w-2 h-2 rounded-full bg-gray-400"></span><span class="font-semibold text-sm text-gray-800">Assigned</span></div><span class="text-xs bg-white px-1.5 py-0.5 rounded-full text-gray-600 font-medium">18</span></div>
+              <div class="bg-gray-50 rounded-b-lg p-2 space-y-2 kanban-col">
+                <div class="task-card border-l-blue-400" onclick="showTaskDetail('Design new landing page mockups')"><div class="font-medium text-sm mb-2">Design new landing page mockups</div><div class="flex items-center gap-1.5 mb-2"><span class="badge bg-blue-100 text-blue-700 text-xs">Medium</span></div><div class="flex items-center justify-between"><div class="flex items-center gap-1"><div class="w-5 h-5 rounded-full bg-blue-500 flex items-center justify-center text-xs text-white font-bold">HI</div><span class="text-xs text-gray-500">Hassan I.</span></div><span class="text-xs text-gray-400">Mar 31</span></div></div>
+                <div class="task-card border-l-red-500" onclick="showTaskDetail('Prepare quarterly review')"><div class="text-xs text-red-600 font-medium mb-1">🚨 Overdue</div><div class="font-medium text-sm mb-2">Prepare quarterly review</div><div class="flex items-center gap-1.5 mb-2"><span class="badge bg-red-100 text-red-700 text-xs">Urgent</span></div><div class="flex items-center justify-between"><div class="flex items-center gap-1"><div class="w-5 h-5 rounded-full bg-purple-500 flex items-center justify-center text-xs text-white font-bold">RF</div><span class="text-xs text-gray-500">Rana F.</span></div><span class="text-xs text-red-600">Mar 20</span></div></div>
+              </div>
+            </div>
+            <div class="flex-shrink-0 w-64">
+              <div class="bg-blue-50 rounded-t-lg px-3 py-2.5 flex items-center justify-between"><div class="flex items-center gap-2"><span class="w-2 h-2 rounded-full bg-blue-400"></span><span class="font-semibold text-sm text-gray-800">Accepted</span></div><span class="text-xs bg-white px-1.5 py-0.5 rounded-full text-gray-600 font-medium">12</span></div>
+              <div class="bg-blue-50/40 rounded-b-lg p-2 space-y-2 kanban-col">
+                <div class="task-card border-l-orange-400"><div class="font-medium text-sm mb-2">Develop client presentation deck</div><div class="flex items-center gap-1.5 mb-2"><span class="badge bg-orange-100 text-orange-700 text-xs">High</span><span class="text-xs text-gray-400">💬 3</span></div><div class="flex items-center justify-between"><div class="flex items-center gap-1"><div class="w-5 h-5 rounded-full bg-teal-500 flex items-center justify-center text-xs text-white font-bold">LM</div><span class="text-xs text-gray-500">Lena M.</span></div><span class="text-xs text-gray-400">Apr 5</span></div></div>
+                <div class="task-card border-l-gray-300"><div class="font-medium text-sm mb-2">Update onboarding documents</div><div class="flex items-center gap-1.5 mb-2"><span class="badge bg-gray-100 text-gray-700 text-xs">Low</span></div><div class="flex items-center justify-between"><div class="flex items-center gap-1"><div class="w-5 h-5 rounded-full bg-green-500 flex items-center justify-center text-xs text-white font-bold">RS</div><span class="text-xs text-gray-500">Reem S.</span></div><span class="text-xs text-gray-400">Apr 10</span></div></div>
+              </div>
+            </div>
+            <div class="flex-shrink-0 w-64">
+              <div class="bg-yellow-50 rounded-t-lg px-3 py-2.5 flex items-center justify-between"><div class="flex items-center gap-2"><span class="w-2 h-2 rounded-full bg-yellow-400"></span><span class="font-semibold text-sm text-gray-800">In Progress</span></div><span class="text-xs bg-white px-1.5 py-0.5 rounded-full text-gray-600 font-medium">29</span></div>
+              <div class="bg-yellow-50/40 rounded-b-lg p-2 space-y-2 kanban-col">
+                <div class="task-card border-l-red-500"><div class="font-medium text-sm mb-2">Design event branding materials</div><div class="flex items-center gap-1.5 mb-2"><span class="badge bg-red-100 text-red-700 text-xs">Urgent</span><span class="text-xs text-gray-400">🔄</span></div><div class="flex items-center justify-between"><div class="flex items-center gap-1"><div class="w-5 h-5 rounded-full bg-pink-500 flex items-center justify-center text-xs text-white font-bold">AK</div><span class="text-xs text-gray-500">Aisha K.</span></div><span class="text-xs text-gray-400">Apr 2</span></div></div>
+                <div class="task-card border-l-blue-400"><div class="font-medium text-sm mb-2">Review vendor contracts</div><div class="flex items-center gap-1.5 mb-2"><span class="badge bg-blue-100 text-blue-700 text-xs">Medium</span><span class="text-xs text-gray-400">💬 1</span></div><div class="flex items-center justify-between"><div class="flex items-center gap-1"><div class="w-5 h-5 rounded-full bg-indigo-500 flex items-center justify-center text-xs text-white font-bold">HA</div><span class="text-xs text-gray-500">Hana A.</span></div><span class="text-xs text-gray-400">Apr 8</span></div></div>
+              </div>
+            </div>
+            <div class="flex-shrink-0 w-64">
+              <div class="bg-green-50 rounded-t-lg px-3 py-2.5 flex items-center justify-between"><div class="flex items-center gap-2"><span class="w-2 h-2 rounded-full bg-green-400"></span><span class="font-semibold text-sm text-gray-800">Completed</span></div><span class="text-xs bg-white px-1.5 py-0.5 rounded-full text-gray-600 font-medium">31</span></div>
+              <div class="bg-green-50/30 rounded-b-lg p-2 space-y-2 kanban-col">
+                <div class="task-card border-l-green-400 opacity-80"><div class="font-medium text-sm mb-2">Coordinate event logistics Q2</div><div class="flex items-center gap-1.5 mb-2"><span class="badge bg-orange-100 text-orange-700 text-xs">High</span></div><div class="flex items-center justify-between"><div class="flex items-center gap-1"><div class="w-5 h-5 rounded-full bg-yellow-500 flex items-center justify-center text-xs text-white font-bold">SH</div><span class="text-xs text-gray-500">Samir H.</span></div><span class="text-xs text-green-600">✓ Done</span></div></div>
+              </div>
+            </div>
+            <div class="flex-shrink-0 w-64">
+              <div class="bg-purple-50 rounded-t-lg px-3 py-2.5 flex items-center justify-between"><div class="flex items-center gap-2"><span class="w-2 h-2 rounded-full bg-purple-400"></span><span class="font-semibold text-sm text-gray-800">Reviewed</span></div><span class="text-xs bg-white px-1.5 py-0.5 rounded-full text-gray-600 font-medium">6</span></div>
+              <div class="bg-purple-50/30 rounded-b-lg p-2 kanban-col"><div class="text-center py-8 text-gray-300 text-sm">6 tasks reviewed</div></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- EMPLOYEES VIEW -->
+        <div id="view-employees" class="view fade-in" style="display:none">
+          <div class="flex items-center justify-between mb-5">
+            <div><h1 class="text-2xl font-bold">Employees</h1><p class="text-gray-500 text-sm">143 active · 150 total</p></div>
+            <button class="btn btn-primary">+ Add Employee</button>
+          </div>
+          <div class="card p-4 mb-5">
+            <div class="flex flex-wrap gap-3">
+              <input class="border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 w-64" placeholder="🔍 Search name, email, position..."/>
+              <select class="border border-gray-200 rounded-lg px-3 py-2 text-sm text-gray-600 focus:outline-none"><option>All Departments</option><option>Technical Design Team</option><option>Events Team</option><option>HR Team</option></select>
+              <select class="border border-gray-200 rounded-lg px-3 py-2 text-sm text-gray-600 focus:outline-none"><option>All Sections</option><option>On-Site</option><option>In-House</option></select>
+              <select class="border border-gray-200 rounded-lg px-3 py-2 text-sm text-gray-600 focus:outline-none"><option>All Roles</option><option>CEO/Admin</option><option>Manager</option><option>Employee</option></select>
+            </div>
+          </div>
+          <div class="card overflow-hidden">
+            <table class="w-full text-sm">
+              <thead class="bg-gray-50 border-b border-gray-200"><tr><th class="text-left py-3 px-4 font-medium text-gray-400 text-xs uppercase">Employee</th><th class="text-left py-3 px-4 font-medium text-gray-400 text-xs uppercase">Department</th><th class="text-left py-3 px-4 font-medium text-gray-400 text-xs uppercase">Section</th><th class="text-left py-3 px-4 font-medium text-gray-400 text-xs uppercase">Role</th><th class="text-left py-3 px-4 font-medium text-gray-400 text-xs uppercase">Status</th><th class="text-left py-3 px-4 font-medium text-gray-400 text-xs uppercase">Actions</th></tr></thead>
+              <tbody class="divide-y divide-gray-50">
+                <tr class="hover:bg-gray-50/50"><td class="py-3 px-4"><div class="flex items-center gap-3"><div class="w-8 h-8 rounded-full bg-purple-600 flex items-center justify-center text-xs font-bold text-white">AR</div><div><div class="font-medium text-gray-900">Ahmed Al-Rashid</div><div class="text-xs text-gray-400">ceo@company.com</div><div class="text-xs text-gray-500">CEO</div></div></div></td><td class="py-3 px-4 text-xs text-gray-500">—</td><td class="py-3 px-4"><span class="badge bg-teal-100 text-teal-700">In-House</span></td><td class="py-3 px-4"><span class="badge bg-purple-100 text-purple-800">CEO / Super Admin</span></td><td class="py-3 px-4"><span class="badge bg-green-100 text-green-700">Active</span></td><td class="py-3 px-4"><button class="text-xs text-blue-600 hover:text-blue-800 font-medium">Edit</button></td></tr>
+                <tr class="hover:bg-gray-50/50"><td class="py-3 px-4"><div class="flex items-center gap-3"><div class="w-8 h-8 rounded-full bg-pink-500 flex items-center justify-center text-xs font-bold text-white">SH</div><div><div class="font-medium text-gray-900">Sara Hassan</div><div class="text-xs text-gray-400">sara@company.com</div><div class="text-xs text-gray-500">HR Manager</div></div></div></td><td class="py-3 px-4 text-xs text-gray-500">HR Team</td><td class="py-3 px-4"><span class="badge bg-teal-100 text-teal-700">In-House</span></td><td class="py-3 px-4"><span class="badge bg-blue-100 text-blue-800">Manager</span></td><td class="py-3 px-4"><span class="badge bg-green-100 text-green-700">Active</span></td><td class="py-3 px-4"><button class="text-xs text-blue-600 font-medium">Edit</button></td></tr>
+                <tr class="hover:bg-gray-50/50"><td class="py-3 px-4"><div class="flex items-center gap-3"><div class="w-8 h-8 rounded-full bg-blue-500 flex items-center justify-center text-xs font-bold text-white">HI</div><div><div class="font-medium text-gray-900">Hassan Iqbal</div><div class="text-xs text-gray-400">hassan@company.com</div><div class="text-xs text-gray-500">UI/UX Designer</div></div></div></td><td class="py-3 px-4 text-xs text-gray-500">Technical Design</td><td class="py-3 px-4"><span class="badge bg-teal-100 text-teal-700">In-House</span></td><td class="py-3 px-4"><span class="badge bg-gray-100 text-gray-700">Employee</span></td><td class="py-3 px-4"><span class="badge bg-green-100 text-green-700">Active</span></td><td class="py-3 px-4"><div class="flex gap-2"><button class="text-xs text-blue-600 font-medium">Edit</button><button class="text-xs text-red-500 font-medium">Deactivate</button></div></td></tr>
+                <tr class="hover:bg-gray-50/50"><td class="py-3 px-4"><div class="flex items-center gap-3"><div class="w-8 h-8 rounded-full bg-orange-500 flex items-center justify-center text-xs font-bold text-white">BC</div><div><div class="font-medium text-gray-900">Bilal Chaudhry</div><div class="text-xs text-gray-400">bilal@company.com</div><div class="text-xs text-gray-500">Site Engineer</div></div></div></td><td class="py-3 px-4 text-xs text-gray-500">Technical (Site)</td><td class="py-3 px-4"><span class="badge bg-orange-100 text-orange-700">On-Site</span></td><td class="py-3 px-4"><span class="badge bg-gray-100 text-gray-700">Employee</span></td><td class="py-3 px-4"><span class="badge bg-green-100 text-green-700">Active</span></td><td class="py-3 px-4"><div class="flex gap-2"><button class="text-xs text-blue-600 font-medium">Edit</button><button class="text-xs text-red-500 font-medium">Deactivate</button></div></td></tr>
+                <tr class="hover:bg-gray-50/50"><td class="py-3 px-4"><div class="flex items-center gap-3"><div class="w-8 h-8 rounded-full bg-gray-400 flex items-center justify-center text-xs font-bold text-white">IS</div><div><div class="font-medium text-gray-400 line-through">Imran Shaikh</div><div class="text-xs text-gray-400">imran@company.com</div></div></div></td><td class="py-3 px-4 text-xs text-gray-400">Operational (Site)</td><td class="py-3 px-4"><span class="badge bg-orange-100 text-orange-700">On-Site</span></td><td class="py-3 px-4"><span class="badge bg-gray-100 text-gray-500">Employee</span></td><td class="py-3 px-4"><span class="badge bg-gray-100 text-gray-500">Inactive</span></td><td class="py-3 px-4"><button class="text-xs text-green-600 font-medium">Activate</button></td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- DEPARTMENTS VIEW -->
+        <div id="view-departments" class="view fade-in" style="display:none">
+          <div class="flex items-center justify-between mb-6">
+            <div><h1 class="text-2xl font-bold">Departments</h1><p class="text-gray-500 text-sm">10 departments · 2 on-site · 8 in-house</p></div>
+            <button class="btn btn-primary">+ Add Department</button>
+          </div>
+          <div class="mb-6">
+            <h2 class="text-lg font-semibold text-gray-700 mb-4">🏗️ On-Site Teams</h2>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div class="card p-5 hover:shadow-md transition-shadow cursor-pointer"><div class="flex justify-between mb-3"><div><h3 class="font-semibold">Technical (Site)</h3><span class="badge bg-orange-100 text-orange-700 mt-1">On-Site</span></div><button class="text-xs text-blue-600 font-medium">Edit</button></div><p class="text-xs text-gray-500 mb-3">On-site technical operations team</p><div class="flex items-center justify-between pt-3 border-t border-gray-100"><div class="flex items-center gap-2"><div class="w-6 h-6 rounded-full bg-blue-500 flex items-center justify-center text-xs text-white font-bold">KM</div><span class="text-xs text-gray-600">Khalid Mansour</span></div><span class="text-sm font-semibold text-gray-700">9 <span class="text-gray-400 font-normal text-xs">members</span></span></div></div>
+              <div class="card p-5 hover:shadow-md transition-shadow cursor-pointer"><div class="flex justify-between mb-3"><div><h3 class="font-semibold">Operational (Site)</h3><span class="badge bg-orange-100 text-orange-700 mt-1">On-Site</span></div><button class="text-xs text-blue-600 font-medium">Edit</button></div><p class="text-xs text-gray-500 mb-3">On-site operational management</p><div class="flex items-center justify-between pt-3 border-t border-gray-100"><span class="text-xs text-gray-400 italic">No manager assigned</span><span class="text-sm font-semibold text-gray-700">7 <span class="text-gray-400 font-normal text-xs">members</span></span></div></div>
+            </div>
+          </div>
+          <div>
+            <h2 class="text-lg font-semibold text-gray-700 mb-4">🏢 In-House Teams</h2>
+            <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+              <div class="card p-5 hover:shadow-md transition-shadow cursor-pointer"><div class="flex justify-between mb-3"><div><h3 class="font-semibold">Technical Design Team</h3><span class="badge bg-teal-100 text-teal-700 mt-1">In-House</span></div></div><p class="text-xs text-gray-500 mb-3">In-house technical design and architecture</p><div class="flex items-center justify-between pt-3 border-t border-gray-100"><div class="flex items-center gap-2"><div class="w-6 h-6 rounded-full bg-purple-500 flex items-center justify-center text-xs text-white font-bold">OK</div><span class="text-xs text-gray-600">Omar Khalil</span></div><span class="text-sm font-semibold text-gray-700">8 <span class="text-gray-400 font-normal text-xs">members</span></span></div></div>
+              <div class="card p-5 hover:shadow-md transition-shadow cursor-pointer"><div class="flex justify-between mb-3"><div><h3 class="font-semibold">Events Team</h3><span class="badge bg-teal-100 text-teal-700 mt-1">In-House</span></div></div><p class="text-xs text-gray-500 mb-3">Event planning and coordination</p><div class="flex items-center justify-between pt-3 border-t border-gray-100"><div class="flex items-center gap-2"><div class="w-6 h-6 rounded-full bg-pink-500 flex items-center justify-center text-xs text-white font-bold">FZ</div><span class="text-xs text-gray-600">Fatima Al-Zahra</span></div><span class="text-sm font-semibold text-gray-700">6 <span class="text-gray-400 font-normal text-xs">members</span></span></div></div>
+              <div class="card p-5 hover:shadow-md transition-shadow cursor-pointer"><div class="flex justify-between mb-3"><div><h3 class="font-semibold">HR Team</h3><span class="badge bg-teal-100 text-teal-700 mt-1">In-House</span></div></div><p class="text-xs text-gray-500 mb-3">Human resources and talent management</p><div class="flex items-center justify-between pt-3 border-t border-gray-100"><div class="flex items-center gap-2"><div class="w-6 h-6 rounded-full bg-pink-400 flex items-center justify-center text-xs text-white font-bold">SH</div><span class="text-xs text-gray-600">Sara Hassan</span></div><span class="text-sm font-semibold text-gray-700">5 <span class="text-gray-400 font-normal text-xs">members</span></span></div></div>
+              <div class="card p-5 hover:shadow-md transition-shadow cursor-pointer"><div class="flex justify-between mb-3"><div><h3 class="font-semibold">Finance & Admin Team</h3><span class="badge bg-teal-100 text-teal-700 mt-1">In-House</span></div></div><div class="flex items-center justify-between pt-3 border-t border-gray-100"><div class="flex items-center gap-2"><div class="w-6 h-6 rounded-full bg-blue-600 flex items-center justify-center text-xs text-white font-bold">TB</div><span class="text-xs text-gray-600">Tariq Bilal</span></div><span class="text-sm font-semibold text-gray-700">7 <span class="text-gray-400 font-normal text-xs">members</span></span></div></div>
+              <div class="card p-5 hover:shadow-md transition-shadow cursor-pointer"><div class="flex justify-between mb-3"><div><h3 class="font-semibold">Business Development</h3><span class="badge bg-teal-100 text-teal-700 mt-1">In-House</span></div></div><div class="flex items-center justify-between pt-3 border-t border-gray-100"><div class="flex items-center gap-2"><div class="w-6 h-6 rounded-full bg-teal-500 flex items-center justify-center text-xs text-white font-bold">NF</div><span class="text-xs text-gray-600">Nadia Farooq</span></div><span class="text-sm font-semibold text-gray-700">5 <span class="text-gray-400 font-normal text-xs">members</span></span></div></div>
+              <div class="card p-5 hover:shadow-md transition-shadow cursor-pointer"><div class="flex justify-between mb-3"><div><h3 class="font-semibold">Creative Studio</h3><span class="badge bg-teal-100 text-teal-700 mt-1">In-House</span></div></div><div class="flex items-center justify-between pt-3 border-t border-gray-100"><span class="text-xs text-gray-400 italic">No manager assigned</span><span class="text-sm font-semibold text-gray-700">4 <span class="text-gray-400 font-normal text-xs">members</span></span></div></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- REPORTS VIEW -->
+        <div id="view-reports" class="view fade-in" style="display:none">
+          <div class="mb-6"><h1 class="text-2xl font-bold">Reports</h1><p class="text-gray-500 text-sm">Analyze performance, attendance & tasks</p></div>
+          <div class="card p-4 mb-5">
+            <div class="flex flex-wrap gap-3 items-end">
+              <div><label class="block text-xs font-medium text-gray-600 mb-1">From</label><input type="date" class="border border-gray-200 rounded-lg px-3 py-2 text-sm" value="2025-02-27"/></div>
+              <div><label class="block text-xs font-medium text-gray-600 mb-1">To</label><input type="date" class="border border-gray-200 rounded-lg px-3 py-2 text-sm" value="2025-03-27"/></div>
+              <div><label class="block text-xs font-medium text-gray-600 mb-1">Department</label><select class="border border-gray-200 rounded-lg px-3 py-2 text-sm text-gray-600"><option>All Departments</option></select></div>
+              <button class="btn btn-primary">Generate Report</button>
+            </div>
+          </div>
+          <div class="border-b border-gray-200 mb-5">
+            <div class="flex gap-1">
+              <button class="px-4 py-2.5 text-sm font-medium border-b-2 border-blue-600 text-blue-600">📈 Performance</button>
+              <button class="px-4 py-2.5 text-sm font-medium border-b-2 border-transparent text-gray-500 hover:text-gray-700">⏱️ Attendance</button>
+              <button class="px-4 py-2.5 text-sm font-medium border-b-2 border-transparent text-gray-500 hover:text-gray-700">📋 Tasks</button>
+            </div>
+          </div>
+          <div class="card p-5 mb-5">
+            <h3 class="font-semibold mb-4">Efficiency Score by Employee</h3>
+            <canvas id="reportChart" height="60"></canvas>
+          </div>
+          <div class="flex justify-between items-center mb-3"><p class="text-sm text-gray-500">28 employees</p><button class="btn btn-outline text-sm">⬇️ Export CSV</button></div>
+          <div class="card overflow-hidden">
+            <table class="w-full text-sm">
+              <thead class="bg-gray-50 border-b border-gray-200"><tr><th class="text-left py-3 px-4 font-medium text-gray-400 text-xs uppercase">Employee</th><th class="text-left py-3 px-4 font-medium text-gray-400 text-xs uppercase">Department</th><th class="text-right py-3 px-4 font-medium text-gray-400 text-xs uppercase">Attendance %</th><th class="text-right py-3 px-4 font-medium text-gray-400 text-xs uppercase">Task Completion</th><th class="text-right py-3 px-4 font-medium text-gray-400 text-xs uppercase">Overdue</th><th class="text-right py-3 px-4 font-medium text-gray-400 text-xs uppercase">Score</th></tr></thead>
+              <tbody class="divide-y divide-gray-50">
+                <tr class="hover:bg-gray-50/50"><td class="py-3 px-4"><div class="flex items-center gap-2"><span class="text-sm font-bold text-gray-200 w-5">1</span><div><div class="font-medium">Fatima Al-Zahra</div><div class="text-xs text-gray-400">Events Manager</div></div></div></td><td class="py-3 px-4 text-xs text-gray-500">Events Team</td><td class="py-3 px-4 text-right font-medium text-green-600">96%</td><td class="py-3 px-4 text-right font-medium text-green-600">90%</td><td class="py-3 px-4 text-right text-gray-400">0</td><td class="py-3 px-4 text-right"><div class="flex items-center justify-end gap-2"><div class="w-10 h-1.5 bg-gray-100 rounded-full"><div class="h-full bg-green-500 rounded-full" style="width:92%"></div></div><span class="font-bold text-gray-900">92</span></div></td></tr>
+                <tr class="hover:bg-gray-50/50"><td class="py-3 px-4"><div class="flex items-center gap-2"><span class="text-sm font-bold text-gray-200 w-5">2</span><div><div class="font-medium">Omar Khalil</div><div class="text-xs text-gray-400">Design Manager</div></div></div></td><td class="py-3 px-4 text-xs text-gray-500">Technical Design</td><td class="py-3 px-4 text-right font-medium text-green-600">91%</td><td class="py-3 px-4 text-right font-medium text-green-600">88%</td><td class="py-3 px-4 text-right text-gray-400">0</td><td class="py-3 px-4 text-right"><div class="flex items-center justify-end gap-2"><div class="w-10 h-1.5 bg-gray-100 rounded-full"><div class="h-full bg-green-500 rounded-full" style="width:89%"></div></div><span class="font-bold text-gray-900">89</span></div></td></tr>
+                <tr class="hover:bg-gray-50/50"><td class="py-3 px-4"><div class="flex items-center gap-2"><span class="text-sm font-bold text-gray-200 w-5">3</span><div><div class="font-medium">Hassan Iqbal</div><div class="text-xs text-gray-400">UI/UX Designer</div></div></div></td><td class="py-3 px-4 text-xs text-gray-500">Technical Design</td><td class="py-3 px-4 text-right font-medium text-green-600">88%</td><td class="py-3 px-4 text-right font-medium text-yellow-600">75%</td><td class="py-3 px-4 text-right text-gray-400">1</td><td class="py-3 px-4 text-right"><div class="flex items-center justify-end gap-2"><div class="w-10 h-1.5 bg-gray-100 rounded-full"><div class="h-full bg-yellow-500 rounded-full" style="width:80%"></div></div><span class="font-bold text-gray-900">80</span></div></td></tr>
+                <tr class="hover:bg-gray-50/50"><td class="py-3 px-4"><div class="flex items-center gap-2"><span class="text-sm font-bold text-gray-200 w-5">4</span><div><div class="font-medium">Bilal Chaudhry</div><div class="text-xs text-gray-400">Site Engineer</div></div></div></td><td class="py-3 px-4 text-xs text-gray-500">Technical (Site)</td><td class="py-3 px-4 text-right font-medium text-yellow-600">72%</td><td class="py-3 px-4 text-right font-medium text-yellow-600">65%</td><td class="py-3 px-4 text-right text-red-500 font-medium">3</td><td class="py-3 px-4 text-right"><div class="flex items-center justify-end gap-2"><div class="w-10 h-1.5 bg-gray-100 rounded-full"><div class="h-full bg-yellow-500 rounded-full" style="width:68%"></div></div><span class="font-bold text-gray-900">68</span></div></td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- CALENDAR VIEW -->
+        <div id="view-calendar" class="view fade-in" style="display:none">
+          <div class="flex items-center justify-between mb-6"><div><h1 class="text-2xl font-bold">Calendar</h1><p class="text-gray-500 text-sm">Task deadlines by date</p></div></div>
+          <div class="card p-5">
+            <div class="flex items-center justify-between mb-5"><button class="p-2 hover:bg-gray-100 rounded-lg">←</button><h2 class="text-lg font-semibold">March 2025</h2><button class="p-2 hover:bg-gray-100 rounded-lg">→</button></div>
+            <div class="grid grid-cols-7 mb-2">
+              <div class="text-center text-xs font-medium text-gray-400 py-2">Sun</div><div class="text-center text-xs font-medium text-gray-400 py-2">Mon</div><div class="text-center text-xs font-medium text-gray-400 py-2">Tue</div><div class="text-center text-xs font-medium text-gray-400 py-2">Wed</div><div class="text-center text-xs font-medium text-gray-400 py-2">Thu</div><div class="text-center text-xs font-medium text-gray-400 py-2">Fri</div><div class="text-center text-xs font-medium text-gray-400 py-2">Sat</div>
+            </div>
+            <div class="grid grid-cols-7 gap-1" id="calendar-grid"></div>
+          </div>
+          <div class="card p-5 mt-4">
+            <h3 class="font-semibold mb-3">March 27 — 2 tasks due</h3>
+            <div class="space-y-2">
+              <div class="border border-gray-100 rounded-lg p-3 flex items-center justify-between"><div><p class="font-medium text-sm">Design new landing page mockups</p><p class="text-xs text-gray-500 mt-0.5">→ Hassan Iqbal</p></div><div class="flex gap-1.5"><span class="badge bg-blue-100 text-blue-700">Medium</span><span class="badge bg-yellow-100 text-yellow-700">In Progress</span></div></div>
+              <div class="border border-red-200 bg-red-50/30 rounded-lg p-3 flex items-center justify-between"><div><p class="font-medium text-sm">🚨 Prepare financial report</p><p class="text-xs text-gray-500 mt-0.5">→ Rana Farhat</p></div><div class="flex gap-1.5"><span class="badge bg-red-100 text-red-700">Urgent</span><span class="badge bg-gray-100 text-gray-700">Assigned</span></div></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- PROFILE VIEW -->
+        <div id="view-profile" class="view fade-in" style="display:none">
+          <div class="max-w-2xl mx-auto space-y-6">
+            <h1 class="text-2xl font-bold">My Profile</h1>
+            <div class="card p-6">
+              <div class="flex items-start gap-5 mb-6">
+                <div class="w-14 h-14 rounded-full bg-blue-600 flex items-center justify-center text-xl font-bold text-white" id="profile-avatar">AR</div>
+                <div class="flex-1"><h2 class="text-xl font-bold" id="profile-name">Ahmed Al-Rashid</h2><p class="text-gray-500" id="profile-pos">CEO</p><p class="text-gray-400 text-sm" id="profile-email">ceo@company.com</p><div class="flex gap-2 mt-2"><span class="badge bg-purple-100 text-purple-800">CEO / Super Admin</span><span class="badge bg-teal-100 text-teal-700">In-House</span></div></div>
+                <button class="btn btn-outline text-sm">✏️ Edit</button>
+              </div>
+              <div class="grid grid-cols-2 gap-4 text-sm">
+                <div class="bg-gray-50 rounded-lg p-3"><div class="text-gray-400 text-xs mb-1">Department</div><div class="font-medium">—</div></div>
+                <div class="bg-gray-50 rounded-lg p-3"><div class="text-gray-400 text-xs mb-1">Phone</div><div class="font-medium">—</div></div>
+                <div class="bg-gray-50 rounded-lg p-3"><div class="text-gray-400 text-xs mb-1">Member Since</div><div class="font-medium">Jan 1, 2024</div></div>
+                <div class="bg-gray-50 rounded-lg p-3"><div class="text-gray-400 text-xs mb-1">Section</div><div class="font-medium">In-House</div></div>
+              </div>
+            </div>
+            <div class="card p-6">
+              <div class="flex items-center justify-between mb-4"><div><h3 class="font-semibold">Security</h3><p class="text-gray-400 text-sm">Change your password</p></div><button class="btn btn-outline text-sm">🔐 Change Password</button></div>
+            </div>
+            <div class="card p-6">
+              <h3 class="font-semibold mb-1">Session</h3><p class="text-gray-400 text-sm mb-4">Sign out of your account on this device</p>
+              <button onclick="doLogout()" class="btn bg-red-600 text-white hover:bg-red-700 text-sm">🚪 Sign Out</button>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </main>
+  </div>
+</div>
+
+<!-- MODALS -->
+<div id="modal-task" class="hidden fixed inset-0 z-50 flex items-center justify-center p-4">
+  <div class="absolute inset-0 bg-black/50" onclick="closeModal('modal-task')"></div>
+  <div class="relative card w-full max-w-lg max-h-[85vh] flex flex-col" style="animation:fadeIn .2s ease">
+    <div class="flex items-center justify-between px-6 py-4 border-b border-gray-100 flex-shrink-0"><h2 class="font-semibold text-lg" id="modal-task-title">Task Details</h2><button onclick="closeModal('modal-task')" class="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-gray-100 text-gray-400">✕</button></div>
+    <div class="overflow-y-auto flex-1 px-6 py-5">
+      <div class="flex items-start justify-between gap-3 mb-3"><h3 class="text-lg font-bold" id="task-detail-title">Design new landing page mockups</h3><div class="flex gap-2 flex-shrink-0"><span class="badge bg-blue-100 text-blue-700">Medium</span><span class="badge bg-yellow-100 text-yellow-700">In Progress</span></div></div>
+      <p class="text-gray-600 text-sm mb-4">This task requires attention and careful execution. Please review all requirements before starting and coordinate with the team lead.</p>
+      <div class="grid grid-cols-2 gap-3 text-sm mb-5">
+        <div><span class="text-gray-400">Assigned To:</span> <span class="font-medium">Hassan Iqbal</span></div>
+        <div><span class="text-gray-400">Assigned By:</span> <span class="font-medium">Ahmed Al-Rashid</span></div>
+        <div><span class="text-gray-400">Department:</span> <span class="text-gray-700">Technical Design</span></div>
+        <div><span class="text-gray-400">Deadline:</span> <span class="font-medium">Mar 31, 2025</span></div>
+      </div>
+      <div class="mb-5"><label class="block text-sm font-medium mb-2">Move To:</label><div class="flex gap-2"><button class="btn btn-outline text-xs">→ Completed</button></div></div>
+      <div><h4 class="font-semibold mb-3">Comments (2)</h4>
+        <div class="space-y-3 mb-3">
+          <div class="flex gap-3"><div class="w-7 h-7 rounded-full bg-purple-500 flex items-center justify-center text-xs text-white font-bold flex-shrink-0">AR</div><div class="flex-1 bg-gray-50 rounded-lg px-3 py-2"><div class="flex items-center gap-2 mb-1"><span class="font-medium text-xs">Ahmed Al-Rashid</span><span class="text-xs text-gray-400">2 hrs ago</span></div><p class="text-sm text-gray-700">Please prioritize the mobile responsive version first.</p></div></div>
+          <div class="flex gap-3"><div class="w-7 h-7 rounded-full bg-blue-500 flex items-center justify-center text-xs text-white font-bold flex-shrink-0">HI</div><div class="flex-1 bg-gray-50 rounded-lg px-3 py-2"><div class="flex items-center gap-2 mb-1"><span class="font-medium text-xs">Hassan Iqbal</span><span class="text-xs text-gray-400">1 hr ago</span></div><p class="text-sm text-gray-700">Understood, I'll start with the mobile layout and share a draft by EOD.</p></div></div>
+        </div>
+        <div class="flex gap-2"><input class="flex-1 border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="Add a comment..."/><button class="btn btn-primary text-sm px-4">Send</button></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div id="modal-create-task" class="hidden fixed inset-0 z-50 flex items-center justify-center p-4">
+  <div class="absolute inset-0 bg-black/50" onclick="closeModal('modal-create-task')"></div>
+  <div class="relative card w-full max-w-lg max-h-[90vh] flex flex-col" style="animation:fadeIn .2s ease">
+    <div class="flex items-center justify-between px-6 py-4 border-b border-gray-100 flex-shrink-0"><h2 class="font-semibold text-lg">Create New Task</h2><button onclick="closeModal('modal-create-task')" class="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-gray-100 text-gray-400">✕</button></div>
+    <div class="overflow-y-auto flex-1 px-6 py-5 space-y-4">
+      <div><label class="block text-sm font-medium text-gray-700 mb-1">Title *</label><input class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="Task title..."/></div>
+      <div><label class="block text-sm font-medium text-gray-700 mb-1">Description</label><textarea class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" rows="3" placeholder="Task details..."></textarea></div>
+      <div class="grid grid-cols-2 gap-3">
+        <div><label class="block text-sm font-medium text-gray-700 mb-1">Assign To *</label><select class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"><option value="">Select employee...</option><option>Hassan Iqbal — Technical Design</option><option>Dina Youssef — Events Team</option><option>Bilal Chaudhry — Technical (Site)</option></select></div>
+        <div><label class="block text-sm font-medium text-gray-700 mb-1">Priority</label><select class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"><option>Low</option><option selected>Medium</option><option>High</option><option>Urgent</option></select></div>
+      </div>
+      <div><label class="block text-sm font-medium text-gray-700 mb-1">Deadline * <span class="text-red-500 text-xs">(mandatory)</span></label><input type="datetime-local" class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"/></div>
+      <div class="flex gap-3 pt-2"><button class="btn btn-primary flex-1 justify-center">Create Task</button><button onclick="closeModal('modal-create-task')" class="btn btn-outline flex-1 justify-center">Cancel</button></div>
+    </div>
+  </div>
+</div>
+
+<div id="modal-override" class="hidden fixed inset-0 z-50 flex items-center justify-center p-4">
+  <div class="absolute inset-0 bg-black/50" onclick="closeModal('modal-override')"></div>
+  <div class="relative card w-full max-w-md" style="animation:fadeIn .2s ease">
+    <div class="flex items-center justify-between px-6 py-4 border-b border-gray-100"><h2 class="font-semibold text-lg">Override Attendance</h2><button onclick="closeModal('modal-override')" class="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-gray-100 text-gray-400">✕</button></div>
+    <div class="px-6 py-5 space-y-4">
+      <div><label class="block text-sm font-medium text-gray-700 mb-1">Employee</label><select class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"><option>Imran Shaikh — Operational (Site)</option><option>Bilal Chaudhry — Technical (Site)</option></select></div>
+      <div><label class="block text-sm font-medium text-gray-700 mb-1">Date</label><input type="date" class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm" value="2025-03-27"/></div>
+      <div class="grid grid-cols-2 gap-3"><div><label class="block text-sm font-medium text-gray-700 mb-1">Punch In</label><input type="time" class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm" value="09:00"/></div><div><label class="block text-sm font-medium text-gray-700 mb-1">Punch Out</label><input type="time" class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm" value="18:00"/></div></div>
+      <div><label class="block text-sm font-medium text-gray-700 mb-1">Notes</label><textarea class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm" rows="2" placeholder="Reason for override..."></textarea></div>
+      <div class="flex gap-3"><button onclick="closeModal('modal-override')" class="btn btn-primary flex-1 justify-center">Save Override</button><button onclick="closeModal('modal-override')" class="btn btn-outline flex-1 justify-center">Cancel</button></div>
+    </div>
+  </div>
+</div>
+
+<script>
+const accounts = {
+  ceo: { name:'Ahmed Al-Rashid', role:'super_admin', label:'CEO / Admin', initials:'AR', email:'ceo@company.com' },
+  manager: { name:'Sara Hassan', role:'manager', label:'HR Manager', initials:'SH', email:'sara@company.com' },
+  employee: { name:'Layla Nasser', role:'employee', label:'HR Officer', initials:'LN', email:'layla@company.com' }
+};
+let currentUser = null;
+
+function quickLogin(type) {
+  const map = { ceo:'ceo@company.com', manager:'sara@company.com', employee:'layla@company.com' };
+  document.getElementById('login-email').value = map[type];
+}
+
+function doLogin() {
+  const email = document.getElementById('login-email').value;
+  let type = email.startsWith('ceo') ? 'ceo' : email.startsWith('sara') ? 'manager' : 'employee';
+  currentUser = accounts[type];
+  document.getElementById('page-login').style.display = 'none';
+  const app = document.getElementById('page-app');
+  app.style.display = 'flex';
+  document.getElementById('sb-name').textContent = currentUser.name;
+  document.getElementById('sb-role').textContent = currentUser.label;
+  document.getElementById('sb-avatar').textContent = currentUser.initials;
+  document.getElementById('header-avatar').textContent = currentUser.initials;
+  document.getElementById('profile-name').textContent = currentUser.name;
+  document.getElementById('profile-pos').textContent = currentUser.label;
+  document.getElementById('profile-email').textContent = currentUser.email;
+  document.getElementById('profile-avatar').textContent = currentUser.initials;
+  if (currentUser.role === 'employee') {
+    document.getElementById('nav-employees').style.display = 'none';
+    document.getElementById('nav-departments').style.display = 'none';
+    document.getElementById('nav-reports').style.display = 'none';
+  }
+  setDate();
+  showView('dashboard');
+  setTimeout(initCharts, 100);
+  buildCalendar();
+}
+
+function doLogout() {
+  currentUser = null;
+  document.getElementById('page-app').style.display = 'none';
+  document.getElementById('page-login').style.display = 'flex';
+  document.getElementById('page-login').classList.add('active');
+  document.getElementById('nav-employees').style.display = '';
+  document.getElementById('nav-departments').style.display = '';
+  document.getElementById('nav-reports').style.display = '';
+}
+
+function setDate() {
+  const d = new Date();
+  document.getElementById('header-date').textContent = d.toLocaleDateString('en-US',{weekday:'long',year:'numeric',month:'long',day:'numeric'});
+}
+
+function showView(name) {
+  document.querySelectorAll('.view').forEach(v => v.style.display = 'none');
+  document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active','text-white'));
+  document.querySelectorAll('.nav-item').forEach(n => n.classList.add('text-gray-300'));
+  const v = document.getElementById('view-' + name);
+  if (v) { v.style.display = 'block'; v.classList.add('fade-in'); }
+  document.querySelectorAll('.nav-item').forEach(n => {
+    if (n.getAttribute('onclick')?.includes("'" + name + "'")) {
+      n.classList.add('active','text-white'); n.classList.remove('text-gray-300');
+    }
+  });
+  document.getElementById('notif-panel').classList.add('hidden');
+}
+
+function toggleNotif() {
+  document.getElementById('notif-panel').classList.toggle('hidden');
+}
+
+function showTaskDetail(title) {
+  document.getElementById('task-detail-title').textContent = title;
+  document.getElementById('modal-task-title').textContent = 'Task Details';
+  document.getElementById('modal-task').classList.remove('hidden');
+}
+
+function showCreateTask() {
+  document.getElementById('modal-create-task').classList.remove('hidden');
+}
+
+function showOverrideModal() {
+  document.getElementById('modal-override').classList.remove('hidden');
+}
+
+function closeModal(id) {
+  document.getElementById(id).classList.add('hidden');
+}
+
+function setTaskView(v) {
+  document.getElementById('btn-board').className = 'px-3 py-1.5 text-sm rounded-md font-medium ' + (v==='board'?'bg-white shadow text-gray-900':'text-gray-500 hover:text-gray-700');
+  document.getElementById('btn-list').className = 'px-3 py-1.5 text-sm rounded-md font-medium ' + (v==='list'?'bg-white shadow text-gray-900':'text-gray-500 hover:text-gray-700');
+  document.getElementById('task-board').style.display = v==='board' ? 'flex' : 'none';
+}
+
+function buildCalendar() {
+  const grid = document.getElementById('calendar-grid');
+  if (!grid) return;
+  grid.innerHTML = '';
+  const startPad = 6; // March 2025 starts Saturday
+  const days = 31;
+  const tasks = { 20: [{t:'Financial report',c:'bg-red-100 text-red-700'}], 27: [{t:'Landing page mockups',c:'bg-blue-50 text-blue-700'},{t:'Financial report 🚨',c:'bg-red-100 text-red-700'}], 31: [{t:'Client proposal',c:'bg-orange-50 text-orange-700'}], 2: [{t:'Event branding',c:'bg-yellow-50 text-yellow-700'}] };
+  for(let i=0;i<startPad;i++) { const d=document.createElement('div'); grid.appendChild(d); }
+  for(let day=1;day<=days;day++){
+    const d=document.createElement('div');
+    const isToday=day===27;
+    const hasTask=tasks[day];
+    d.className=`min-h-16 p-1.5 rounded-lg border cursor-pointer transition-all ${isToday?'border-blue-400 bg-blue-50':'border-transparent hover:border-gray-200 hover:bg-gray-50'}`;
+    let html=`<div class="text-xs font-medium mb-1 w-6 h-6 flex items-center justify-center rounded-full ${isToday?'bg-blue-600 text-white':'text-gray-700'}">${day}</div>`;
+    if(hasTask) hasTask.slice(0,2).forEach(t=>{ html+=`<div class="text-xs px-1 py-0.5 rounded truncate mb-0.5 ${t.c}">${t.t}</div>`; });
+    d.innerHTML=html;
+    grid.appendChild(d);
+  }
+}
+
+let chartsInit = false;
+function initCharts() {
+  if (chartsInit) return;
+  chartsInit = true;
+  const labels = ['Mar 14','Mar 15','Mar 17','Mar 18','Mar 19','Mar 20','Mar 21','Mar 24','Mar 25','Mar 26','Mar 27'];
+  new Chart(document.getElementById('attendanceChart'), {
+    type:'line', data:{
+      labels,
+      datasets:[
+        {label:'Present',data:[112,115,108,119,121,116,113,118,120,117,118],borderColor:'#10b981',backgroundColor:'rgba(16,185,129,.08)',fill:true,tension:.4,borderWidth:2,pointRadius:3},
+        {label:'Late',data:[8,6,10,7,5,9,11,8,7,10,12],borderColor:'#f59e0b',fill:false,tension:.4,borderWidth:2,borderDash:[4,2],pointRadius:3},
+        {label:'Absent',data:[20,18,24,15,13,19,21,16,14,18,17],borderColor:'#ef4444',backgroundColor:'rgba(239,68,68,.05)',fill:true,tension:.4,borderWidth:2,pointRadius:3}
+      ]
+    },
+    options:{responsive:true,plugins:{legend:{position:'bottom',labels:{boxWidth:10,font:{size:11}}}},scales:{y:{beginAtZero:false,min:0,grid:{color:'#f0f0f0'},ticks:{font:{size:10}}},x:{grid:{display:false},ticks:{font:{size:10}}}}}
+  });
+  new Chart(document.getElementById('pieChart'), {
+    type:'doughnut', data:{labels:['Present','Late','Absent'],datasets:[{data:[118,12,17],backgroundColor:['#10b981','#f59e0b','#ef4444'],borderWidth:0}]},
+    options:{responsive:true,cutout:'65%',plugins:{legend:{display:false}}}
+  });
+  new Chart(document.getElementById('reportChart'), {
+    type:'bar',
+    data:{labels:['Fatima A.','Omar K.','Hassan I.','Nadia F.','Sara H.','Tariq B.','Bilal C.','Layla N.'],datasets:[{label:'Efficiency Score',data:[92,89,80,85,88,76,68,82],backgroundColor:'#3b82f6',borderRadius:4}]},
+    options:{responsive:true,plugins:{legend:{display:false}},scales:{y:{beginAtZero:true,max:100,grid:{color:'#f0f0f0'},ticks:{font:{size:10},callback:v=>v+'%'}},x:{grid:{display:false},ticks:{font:{size:10}}}}}
+  });
+}
+</script>
+</body>
+</html>
